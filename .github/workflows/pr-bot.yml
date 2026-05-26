@@ -1,0 +1,49 @@
+name: PR Bot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch and make changes
+        run: |
+          BRANCH_NAME="bot/automated-pr-$(date +%s)"
+
+          git checkout -b $BRANCH_NAME
+
+          echo "Updated at $(date)" >> update.txt
+
+          git add .
+          git commit -m "chore: automated update"
+
+          git push origin $BRANCH_NAME
+
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'chore: automated update',
+              body: 'This PR was created automatically.',
+              head: process.env.BRANCH_NAME,
+              base: 'main'
+            });
